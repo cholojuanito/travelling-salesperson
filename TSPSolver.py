@@ -132,15 +132,16 @@ class TSPSolver:
         results = {}
         cities = self._scenario.getCities()
         ncities = len(cities)
-        foundTour = False
-        count = 1  # We always start with an intial state
+        totalStates = 1  # We always start with an intial state
+        numSolutions = 0
         numPruned = 0
         bssf = self.defaultRandomTour()['soln']
         start_time = time.time()
 
         initCostMatrix = self.createOriginalCostMatrix(
             self._scenario.getCities())
-        heap = PriorityQueueHeap()
+        heap = []
+        heapq.heapify(heap)
 
         # Initialize the heap with a state
         initState = SearchState(initCostMatrix.copy(), cities[0])
@@ -148,10 +149,10 @@ class TSPSolver:
         initState.rowReduce()
         initState.colReduce()
 
-        heap.insert(initState)
+        heapq.heappush(heap, initState)
 
-        while(len(heap.queue) > 0 and (time.time() - start_time) < time_allowance):
-            parentState = heap.deleteMin()
+        while(len(heap) > 0 and (time.time() - start_time) < time_allowance):
+            parentState = heapq.heappop(heap)
             # Check if the next state is even worth following
             if(parentState.bound < bssf.cost):
                 parentCostMatrix = parentState.costMatrix
@@ -166,35 +167,39 @@ class TSPSolver:
                             # Create a new state from exitCity to enterCity
                             newState = SearchState(parentCostMatrix.copy(
                             ), enterCity=enterCity, exitCity=exitCity, parentRoute=parentState.route.copy(), parentBound=parentState.bound)
+
+                            # Increase the total number of states made
+                            totalStates += 1
+
                             # Make sure we don't add the final city twice
                             if (newState._addCityToRoute(enterCity) == True):
                                 newState._removeCitiesFromCostMatrix(
                                     enterCity._index, exitCity._index)
                                 newState.rowReduce()
                                 newState.colReduce()
-                                # Increase the total number of states made
-                                count = count + 1
+
                                 if(newState.bound < bssf.cost):
-                                    heap.insert(newState)
+                                    heapq.heappush(heap, newState)
                                     if(len(newState.route) == ncities and self._scenario._edge_exists[newState.route[-1]._index][newState.route[0]._index]):
                                         bssf = TSPSolution(newState.route)
+                                        numSolutions += 1
                                 else:
                                     # Increase the number of pruned "branches"
-                                    numPruned = numPruned + 1
+                                    numPruned += 1
                             else:
                                 # Increase the number of pruned "branches"
-                                numPruned = numPruned + 1
+                                numPruned += 1
             else:
                 # Increase the number of pruned "branches"
-                numPruned = numPruned + 1
+                numPruned += 1
 
         end_time = time.time()
         results['cost'] = bssf.cost
         results['time'] = end_time - start_time
-        results['count'] = count
+        results['count'] = numSolutions
         results['soln'] = bssf
-        results['max'] = heap.maxSize
-        results['total'] = count
+        results['max'] = totalStates
+        results['total'] = totalStates
         results['pruned'] = numPruned
         return results
 

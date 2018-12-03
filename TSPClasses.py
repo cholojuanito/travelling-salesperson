@@ -188,165 +188,22 @@ class City:
 
         return int(math.ceil(cost * self.MAP_SCALE))
 
-class PriorityQueueHeap:
-    '''
-    A min-heap implementation of a priority queue to be used in the Travelling Salesperson Algorithm
-    '''
-
-    def __init__(self):
-        self.queue = list()
-        self.queueIndexMap = dict()
-        self.maxSize = 0
-
-    def insert(self, state):
-        '''
-        Time Complexity: O(log|V|) because we call siftUp
-
-        Adds a state and sorts by calling siftUp
-
-        The key for sorting the heap is based on both how deep into
-        the search tree we are and how small the lower boud for the
-        state is. I figured the average length between each city in the 
-        current state would be the best way to represent this.
-        '''
-        self.queue.append([state, (state.bound / len(state.route))])
-        self.queueIndexMap[state._id] = len(self.queue) - 1
-        self.siftUp(state)
-        if (self.maxSize < len(self.queue)):
-            self.maxSize = len(self.queue)
-
-    def deleteMin(self):
-        '''
-        Time Complexity: O(log|V|) because we call siftDown
-
-        Swaps the first state in the heap with the last one.
-        Then calls siftDown
-        '''
-        # Delete the first one and return it
-        lastIndex = len(self.queue) - 1
-        bestState = self.queue[0][0]
-        lastState = self.queue[lastIndex][0]
-
-        # Change positions with very last element
-        self.updateMap(bestState._id, lastState._id)
-        self.updateQueue(0, lastIndex)
-
-        # Delete the bestState - now in the last element
-        del self.queue[lastIndex]
-
-        # Send the state that was last in to be siftted down
-        if(len(self.queue) > 0):
-            self.siftDown(self.queue[0][0])
-
-        return bestState
-
-    def siftUp(self, nodeToSift):
-        '''
-        Time Complexity: O(log|V|) because the farthest we will go up the 'tree' is
-        to the top. Assuming we start at the bottom then we will be making log|V|
-        iterations until we reach the top of the 'tree'
-
-        Space Complexity: N/A because we are simply using the queue and map that
-        have already been created
-
-        Iteratively compares a node to its 'parent' in the 'tree'.
-        If the parent node's key is less than the current node's then they are swapped
-        '''
-        if(len(self.queue) < 2):
-            return
-
-        while(True):
-            indexNodeToSift = self.queueIndexMap[nodeToSift._id]
-            nodeToSiftVal = self.queue[indexNodeToSift][1]
-            indexParentNode = indexNodeToSift // 2 if (
-                indexNodeToSift % 2 == 1) else int((indexNodeToSift / 2) - 1)
-            if(indexParentNode < 0):
-                indexParentNode = 0
-
-            parentNodeVal = self.queue[indexParentNode][1]
-            if (parentNodeVal > nodeToSiftVal):
-                parentNode = self.queue[indexParentNode][0]
-                self.updateMap(nodeToSift._id, parentNode._id)
-                self.updateQueue(indexNodeToSift, indexParentNode)
-            
-            #TODO Maybe do an else if for a tie breaker?
-            else:
-                break
-
-    def siftDown(self, nodeToSift):
-        '''
-        Time Complexity: O(log|V|) because the farthest we will go down the 'tree' is
-        to the bottom. We always start at the top of the 'tree' we make at most log|V|
-        iterations until we reach the bottom of the 'tree'
-
-        Space Complexity: N/A because we are simply using the queue and map that
-        have already been created, assuming we put aside all the local variables I use
-        in this function
-
-        Iteratively compares a node's key with the keys of its 'children' in the 'tree'.
-        It picks the smaller of the two if there are two 'children'.
-
-        If the child's key is smaller than node's key then they are swapped
-        '''
-        if(len(self.queue) < 2):
-            return
-
-        while(True):
-            indexNodeToSift = self.queueIndexMap[nodeToSift._id]
-            leftChildIndex = (2 * indexNodeToSift) + 1
-            rightChildIndex = (2 * indexNodeToSift) + 2
-            lastIndex = len(self.queue) - 1
-            # Check for overflow
-            if (leftChildIndex > lastIndex):
-                leftChildIndex = lastIndex
-            if (rightChildIndex > lastIndex):
-                rightChildIndex = lastIndex
-
-            leftChildNode = self.queue[leftChildIndex][0]
-            rightChildNode = self.queue[rightChildIndex][0]
-            leftChildNodeVal = self.queue[leftChildIndex][1]
-            rightChildNodeVal = self.queue[rightChildIndex][1]
-            nodeToSiftVal = self.queue[indexNodeToSift][1]
-
-            # Check if left child is viable
-            if (leftChildNodeVal < nodeToSiftVal and leftChildNodeVal <= rightChildNodeVal):
-                self.updateMap(nodeToSift._id, leftChildNode._id)
-                self.updateQueue(indexNodeToSift, leftChildIndex)
-
-                # else if the right child is viable
-            elif (rightChildNodeVal < nodeToSiftVal and rightChildNodeVal <= leftChildNodeVal):
-                self.updateMap(nodeToSift._id, rightChildNode._id)
-                self.updateQueue(indexNodeToSift, rightChildIndex)
-                # else should be done
-            else:
-                break
-
-    def updateMap(self, nodeToSiftId, otherNodeId):
-        '''
-        Time Complexity: O(1)
-
-        Space Complexity: N/A
-
-        Simply swaps the values
-        '''
-        self.queueIndexMap[nodeToSiftId], self.queueIndexMap[otherNodeId] = self.queueIndexMap[otherNodeId], self.queueIndexMap[nodeToSiftId]
-
-    def updateQueue(self, indexNodeToSift, indexOtherNode):
-        '''
-        Time Complexity: O(1)
-
-        Space Complexity: N/A
-
-        Simply swaps the values
-        '''
-        self.queue[indexNodeToSift], self.queue[indexOtherNode] = self.queue[indexOtherNode], self.queue[indexNodeToSift]
-
-
-'''
-Comments go here
-'''
 class SearchState:
-    def __init__(self, parentCostMatrix, enterCity = None, exitCity = None, parentRoute = list(), parentBound = 0):
+    '''
+    Represents a state at any given moment while searching through
+    all the possible solutions for the Travelling Saleperson problem
+
+    Properties:
+    id - UUID
+    route - List of cities visited in order
+    visitedCities - Set of all visited cities
+    costMatrix - 2-D array with :
+                        1) Rows representing the cost to leave a city
+                        2) Columns representing the cost to enter a city
+    bound - the "lowest" possible cost of the route up to this state
+
+    '''
+    def __init__(self, parentCostMatrix, exitCity = None, enterCity = None, parentRoute = list(), parentBound = 0):
         # Give the state an id so it can be found in the heap
         self._id = uuid.uuid4().hex
         self.route = parentRoute
@@ -355,12 +212,25 @@ class SearchState:
         self.costMatrix = parentCostMatrix
         self.matrixLen = len(self.costMatrix[0])
         # Initialize the bound based on the previous matrix's bound
-        self.bound = parentBound
-    
+        if (enterCity is None):
+            self.bound = parentBound
+        else:
+            self.bound = parentBound + parentCostMatrix[exitCity._index][enterCity._index]
+
+
+    '''
+    Initializes the set with all the city names that have
+    been visited
+    '''
     def _initializeVisitedCities(self):
         for i in range(len(self.route)):
             self.visitedCities.add(self.route[i]._name)
 
+    '''
+    Adds a city to the route.
+    If it has been visited already then don't add
+    it and return False so we skip this option
+    '''
     def _addCityToRoute(self, newCity):
         if (newCity._name in self.visitedCities):
             return False
@@ -369,6 +239,11 @@ class SearchState:
             self.visitedCities.add(newCity._name)
             return True
 
+    '''
+    Fills the row of the city we exit and the
+    column of the city we enter with infinity
+    This should prevent them from being visited again
+    '''
     def _removeCitiesFromCostMatrix(self, enterCityIdx, exitCityIdx):
         for i in range(self.matrixLen):
             self.costMatrix[exitCityIdx][i] = math.inf
@@ -377,6 +252,13 @@ class SearchState:
         self.costMatrix[exitCityIdx, enterCityIdx] = math.inf	
         self.costMatrix[enterCityIdx, exitCityIdx] = math.inf
 
+    '''
+    Finds the minimum value in every row and subtracts
+    it from each entry. 
+    We then add that minimum value to the lower bound
+
+    This represents the cost of leaving any city
+    '''
     def rowReduce(self):
         for rowIdx in range(self.matrixLen):
             reduceAmount = self.costMatrix[rowIdx].min()
@@ -385,6 +267,13 @@ class SearchState:
                 for colIdx in range(self.matrixLen):
                     self.costMatrix[rowIdx][colIdx] = self.costMatrix[rowIdx][colIdx] - reduceAmount
     
+    '''
+    Finds the minimum value in every column and subtracts
+    it from each entry. 
+    We then add that minimum value to the lower bound
+
+    This represents the cost of entering any city
+    '''
     def colReduce(self):
         for colIdx in range(self.matrixLen):
             column = self.costMatrix[:, colIdx]
@@ -393,3 +282,16 @@ class SearchState:
                 self.bound = self.bound + reduceAmount
                 for rowIdx in range(self.matrixLen):
                     self.costMatrix[rowIdx][colIdx] = self.costMatrix[rowIdx][colIdx] - reduceAmount
+
+    '''
+    Overriden methods so that this class works with
+    the heap in the correct way
+    '''
+    def __eq__(self, other):
+        return self.bound == other.bound
+    
+    def __lt__(self, other):
+        return self.bound < other.bound
+
+    def __ne__(self, other):
+        return not self.bound == other.bound
