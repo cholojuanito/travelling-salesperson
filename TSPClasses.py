@@ -218,20 +218,28 @@ class SearchState:
             self.bound = parentBound + parentCostMatrix[exitCity._index][enterCity._index]
 
 
-    '''
-    Initializes the set with all the city names that have
-    been visited
-    '''
     def _initializeVisitedCities(self):
+        '''
+        Time: O(n) - where "n" is the number of cities, 
+            iterates the list of cities once.
+        Space: O(n) - creates a set that is at most size "n"
+
+        Initializes the set with all the city names that have
+        been visited
+        '''
         for i in range(len(self.route)):
             self.visitedCities.add(self.route[i]._name)
 
-    '''
-    Adds a city to the route.
-    If it has been visited already then don't add
-    it and return False so we skip this option
-    '''
+    
     def _addCityToRoute(self, newCity):
+        '''
+        Time: O(1) - just calls some append functions
+        Space: N/A
+
+        Adds a city to the route.
+        If it has been visited already then don't add
+        it and return False so we skip this option
+        '''
         if (newCity._name in self.visitedCities):
             return False
         else:
@@ -239,12 +247,16 @@ class SearchState:
             self.visitedCities.add(newCity._name)
             return True
 
-    '''
-    Fills the row of the city we exit and the
-    column of the city we enter with infinity
-    This should prevent them from being visited again
-    '''
     def _removeCitiesFromCostMatrix(self, enterCityIdx, exitCityIdx):
+        '''
+        Time: O(n) - where "n" is the number of cities, because it iterates 
+            the list once
+        Space: N/A - nothing is getting created
+
+        Fills the row of the city we exit and the
+        column of the city we enter with infinity
+        This should prevent them from being visited again
+        '''
         for i in range(self.matrixLen):
             self.costMatrix[exitCityIdx][i] = math.inf
             self.costMatrix[i][enterCityIdx] = math.inf
@@ -252,14 +264,22 @@ class SearchState:
         self.costMatrix[exitCityIdx, enterCityIdx] = math.inf	
         self.costMatrix[enterCityIdx, exitCityIdx] = math.inf
 
-    '''
-    Finds the minimum value in every row and subtracts
-    it from each entry. 
-    We then add that minimum value to the lower bound
-
-    This represents the cost of leaving any city
-    '''
     def rowReduce(self):
+        '''
+        Time: O(n^2) - where "n" is the number of cities, because iterate the 
+            whole 2-D array and possibly change each cell
+        Space: N/A - nothing gets created
+
+        Finds the minimum value in every row and subtracts
+        it from each entry. 
+    it from each entry. 
+        it from each entry. 
+    it from each entry. 
+        it from each entry. 
+        We then add that minimum value to the lower bound
+
+        This represents the cost of leaving any city
+        '''
         for rowIdx in range(self.matrixLen):
             reduceAmount = self.costMatrix[rowIdx].min()
             if(reduceAmount < math.inf and reduceAmount > 0):
@@ -267,14 +287,22 @@ class SearchState:
                 for colIdx in range(self.matrixLen):
                     self.costMatrix[rowIdx][colIdx] = self.costMatrix[rowIdx][colIdx] - reduceAmount
     
-    '''
-    Finds the minimum value in every column and subtracts
-    it from each entry. 
-    We then add that minimum value to the lower bound
-
-    This represents the cost of entering any city
-    '''
     def colReduce(self):
+        '''
+        Time: O(n^2) - where "n" is the number of cities, because iterate the 
+            whole 2-D array and possibly change each cell
+        Space: N/A - nothing gets created
+
+        Finds the minimum value in every column and subtracts
+        it from each entry. 
+    it from each entry. 
+        it from each entry. 
+    it from each entry. 
+        it from each entry. 
+        We then add that minimum value to the lower bound
+
+        This represents the cost of entering any city
+        '''
         for colIdx in range(self.matrixLen):
             column = self.costMatrix[:, colIdx]
             reduceAmount = column.min()

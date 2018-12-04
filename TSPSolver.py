@@ -119,27 +119,62 @@ class TSPSolver:
         results['pruned'] = None
         return results
 
-    ''' <summary>
-		This is the entry point for the branch-and-bound algorithm that you will implement
-		</summary>
-		<returns>results dictionary for GUI that contains three ints: cost of best solution,
-		time spent to find best solution, total number solutions found during search (does
-		not include the initial BSSF), the best solution found, and three more ints:
-		max queue size, total number of states created, and number of pruned states.</returns>
-	'''
-
     def branchAndBound(self, time_allowance=60.0):
+        '''
+        Time: O(n^2 B^n) where "n" is the number of cities and "B" is
+            the "branching factor". The branching factor is a number
+            that is calculated for each state. It is dependent on many
+            factors including: 
+                1) Depth in the search tree
+                2) The number of cities that can be reached from that state
+
+            The n in the exponent comes from the number of possible
+            states that can be produced at that particular state. 
+
+            The n^2 comes from the amount of work done while creating
+            each state. At each state, a cost matrix is made and then
+            reduced to obtain the bound for the state. This involves
+            iterating over an 'n by n' 2-D array, thus giving us n^2 operations.
+
+        Space: O(n2 E B) – where n is the number of  cities, E is the number of edges between the cities at a particular state and B is the branch factor mentioned above.
+            The n2 represents the 2-D cost matrix that each state contains.
+            The E represents the number of possible outward edges at any given state.
+            This encompasses the size and amount of the states that could possibly be created.
+
+        The Branch and Bound algorithm for solving the travelling 
+        salesperson problem.
+        This algorithm uses SearchState objects to represent a node
+        in the search tree. The search tree is implemented using a 
+        a min-heap.
+
+        ## The Algorithm ##
+        The basic idea is that we start with an initial state and 
+        create/expand into child states from there. If at any point
+        a child state contains a better solution than the current 
+        bssf (best solution so far) we then update the bssf and now
+        compare each child state that is made or state from the heap
+        with the bssf. The bssf is intialized to a random permutation.
+         If a state's bound is greater than the bssf's cost
+        then we "prune" it from the search tree. Since logically it would
+        be a waste of time to keep searching that branch.
+
+        ## The Heap ##
+        The heap used is a min-heap. It is implemented using the heapq
+        module. It sorts the heap based on the bound of each state.
+        The state with the lowest bound will always be the first element
+        in the heap
+        '''
         results = {}
         cities = self._scenario.getCities()
         ncities = len(cities)
         totalStates = 1  # We always start with an intial state
         numSolutions = 0
         numPruned = 0
+        maxHeapSize = 1
         bssf = self.defaultRandomTour()['soln']
         start_time = time.time()
 
-        initCostMatrix = self.createOriginalCostMatrix(
-            self._scenario.getCities())
+        initCostMatrix = self.createOriginalCostMatrix(cities)
         heap = []
         heapq.heapify(heap)
 
@@ -180,6 +215,11 @@ class TSPSolver:
 
                                 if(newState.bound < bssf.cost):
                                     heapq.heappush(heap, newState)
+
+                                    # Increase the max heap size if needed
+                                    if (len(heap) > maxHeapSize):
+                                        maxHeapSize = len(heap)
+
                                     if(len(newState.route) == ncities and self._scenario._edge_exists[newState.route[-1]._index][newState.route[0]._index]):
                                         bssf = TSPSolution(newState.route)
                                         numSolutions += 1
@@ -198,7 +238,7 @@ class TSPSolver:
         results['time'] = end_time - start_time
         results['count'] = numSolutions
         results['soln'] = bssf
-        results['max'] = totalStates
+        results['max'] = maxHeapSize
         results['total'] = totalStates
         results['pruned'] = numPruned
         return results
