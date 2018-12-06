@@ -84,15 +84,17 @@ class TSPSolver:
         startCity = 0
         currentCity = startCity
         allCities = copy.deepcopy(self._scenario.getCities())
-        citiesLeft = allCities
+        citiesLeft = copy.copy(allCities)
         bssf = TSPSolution([allCities[startCity]])
         tryNewStartCity = False
         route = []
+        count = 1
         start_time = time.time()
-
-        while not foundTour and time.time() - start_time < time_allowance:
+        while not foundTour and ((time.time() - start_time) < time_allowance):
             #for case of previous start city not finding a tour
             if(tryNewStartCity == True):
+                tryNewStartCity = False
+                count = count + 1
                 #if all cities have been tried as start city
                 if (startCity + 1 >= len(allCities)):
                     break
@@ -100,23 +102,25 @@ class TSPSolver:
                 startCity = startCity + 1
                 route = []
                 currentCity = startCity
-                citiesLeft = self._scenario.getCities()
+                citiesLeft = copy.copy(allCities)
             #add current city to route and remove from list of possible cities to go to
             route.append(allCities[currentCity])
-            citiesLeft.remove(allCities[currentCity])
+            citiesLeft = self.removeCityFromList(citiesLeft, allCities[currentCity])
             #find closest/lowest cost city to travel to next
             if (len(citiesLeft) > 0):
-                closestNeighbor = 0
+                closestNeighbor = None
                 closestCost = math.inf
-                for i in range(len(citiesLeft)-1):
+                for i in range(len(citiesLeft)):
                     cost = allCities[currentCity].costTo(citiesLeft[i])
                     if (cost < closestCost):
                         closestCost = cost
-                        closestNeighbor = i
+                        closestNeighbor = citiesLeft[i]
+                if (closestNeighbor is None):
+                    tryNewStartCity = True      # hit a dead end
+                    continue
                 #switch currentCity to the closest city found
-                currentCity = closestNeighbor
+                currentCity = self.findCityIndexInList(allCities, closestNeighbor)
             else:
-                # route.append(startCity) #don't need this because TSPSolution does it in cost function
                 #create a solution because we visited all cities (greedy = stop on first valid solution)
                 bssf = TSPSolution(route)
                 if bssf.cost < math.inf:
@@ -127,12 +131,33 @@ class TSPSolver:
         end_time = time.time()
         results['cost'] = bssf.cost if foundTour else math.inf
         results['time'] = end_time - start_time
-        results['count'] = len(route)
+        results['count'] = count
         results['soln'] = bssf
         results['max'] = None
         results['total'] = None
         results['pruned'] = None
         return results
+
+    def findCityIndexInList(self, cityList, city):
+        try:
+            i = cityList.index(city)
+            return i
+        except Exception:
+            for i in range(len(cityList)):
+                c = cityList[i]
+                if c._index == city._index:
+                    return i
+            raise Exception("city not found in list")
+
+    def removeCityFromList(self, cityList, city):
+        for c in cityList:
+            if c == city:
+                cityList.remove(c)
+                return cityList
+            if c._index == city._index:
+                cityList.remove(c)
+                return cityList
+        raise Exception("city not found in list")
 
     def invalidResult(self):
         results = {}
