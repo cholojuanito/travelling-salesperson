@@ -8,7 +8,7 @@ elif PYQT_VER == 'PYQT4':
 else:
     raise Exception('Unsupported Version of PyQt: {}'.format(PYQT_VER))
 
-
+import copy
 import time
 import numpy as np
 from TSPClasses import *
@@ -76,48 +76,73 @@ class TSPSolver:
 		algorithm</returns>
 	'''
 
-    def greedy(self, time_allowance=60.0):
+    def greedy( self,time_allowance=60.0):
+        if (len(self._scenario.getCities()) == 0):
+            return self.invalidResult()
         results = {}
-        cities = self._scenario.getCities()
-        ncities = len(cities)
         foundTour = False
-        count = 0
-        bssf = None
+        startCity = 0
+        currentCity = startCity
+        allCities = copy.deepcopy(self._scenario.getCities())
+        citiesLeft = allCities
+        bssf = TSPSolution([allCities[startCity]])
+        tryNewStartCity = False
+        route = []
         start_time = time.time()
 
-        while not foundTour and time.time()-start_time < time_allowance:
-
-            costMatrix = self.createOriginalCostMatrix(
-                self._scenario.getCities())
-
-            # for i in range(ncities):
-            #     minCostExitIdx = np.unravel_index(
-            #         costMatrix[i].argmin(), costMatrix[i].shape)
-            #     for j in range(ncities):
-
-            # create a random permutation
-            perm = np.random.permutation(ncities)
-            route = []
-            # Now build the route using the random permutation
-            i = 0
-            for i in range(ncities):
-                route.append(cities[perm[i]])
-
-            bssf = TSPSolution(route)
-            count += 1
-            if bssf.cost < math.inf:
-                # Found a valid route
-                foundTour = True
-
+        while not foundTour and time.time() - start_time < time_allowance:
+            #for case of previous start city not finding a tour
+            if(tryNewStartCity == True):
+                #if all cities have been tried as start city
+                if (startCity + 1 >= len(allCities)):
+                    break
+                #increment startCity and reset tour info
+                startCity = startCity + 1
+                route = []
+                currentCity = startCity
+                citiesLeft = self._scenario.getCities()
+            #add current city to route and remove from list of possible cities to go to
+            route.append(allCities[currentCity])
+            citiesLeft.remove(allCities[currentCity])
+            #find closest/lowest cost city to travel to next
+            if (len(citiesLeft) > 0):
+                closestNeighbor = 0
+                closestCost = math.inf
+                for i in range(len(citiesLeft)-1):
+                    cost = allCities[currentCity].costTo(citiesLeft[i])
+                    if (cost < closestCost):
+                        closestCost = cost
+                        closestNeighbor = i
+                #switch currentCity to the closest city found
+                currentCity = closestNeighbor
+            else:
+                # route.append(startCity) #don't need this because TSPSolution does it in cost function
+                #create a solution because we visited all cities (greedy = stop on first valid solution)
+                bssf = TSPSolution(route)
+                if bssf.cost < math.inf:
+                    foundTour = True
+                else:
+                    #doesn't count as a solution if cost is infinite. Try a new start city.
+                    tryNewStartCity = True
         end_time = time.time()
         results['cost'] = bssf.cost if foundTour else math.inf
         results['time'] = end_time - start_time
-        results['count'] = count
+        results['count'] = len(route)
         results['soln'] = bssf
         results['max'] = None
         results['total'] = None
         results['pruned'] = None
         return results
+
+    def invalidResult(self):
+        results = {}
+        results['cost'] =  math.inf
+        results['time'] = math.inf
+        results['count'] = 0
+        results['soln'] = None
+        results['max'] = None
+        results['total'] = None
+        results['pruned'] = None
 
     def branchAndBound(self, time_allowance=60.0):
         '''
