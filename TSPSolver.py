@@ -18,12 +18,16 @@ import itertools
 
 def optSwap(route, i, k):
     '''
+    Reverses the subsection from index i to k
     '''
     return route[:i] + list(reversed(route[i:k])) + route[k:]
 
 
 def koptLoop(bssf, ncities):
     '''
+    This is loop iterates through each of the possible
+    swaps, calls the swap function then check if the new
+    solution is better.
     '''
     for i in range(ncities-1):
         for k in range(i, ncities):
@@ -48,7 +52,8 @@ class TSPSolver:
         is a type of local search algorithm. Essentially the algorithm
         is this:
         1) Start with a solution
-        2) Look for every possible combination of swaps between "k" edges
+        2) Look for every possible combination of swap reversals between 
+        "k" edges
         3) If the swap produces a better solution then update the bssf
 
         Pitfall:
