@@ -15,6 +15,16 @@ from TSPClasses import *
 import heapq
 import itertools
 
+def optSwap(route, i , k):
+    return route[:i] + list(reversed(route[i:k])) + route[k:]
+
+def koptLoop(bssf, ncities):
+    for i in range(ncities-1):
+        for k in range(i, ncities):
+            new_solution = TSPSolution(optSwap(bssf.route, i, k) )
+            if(new_solution.cost < bssf.cost):
+                return new_solution
+    return bssf
 
 class TSPSolver:
     def __init__(self, gui_view):
@@ -23,6 +33,62 @@ class TSPSolver:
     def setupWithScenario(self, scenario):
         self._scenario = scenario
 
+
+
+    ''' <summary>
+		This is the entry point for the algorithm you'll write for your group project.
+		</summary>
+		<returns>results dictionary for GUI that contains three ints: cost of best solution,
+		time spent to find best solution, total number of solutions found during search, the
+		best solution found.  You may use the other three field however you like.
+		algorithm</returns>
+	'''
+
+    def fancy(self, time_allowance=60.0):
+        results = {}
+        cities = self._scenario.getCities()
+        ncities = len(cities)
+        foundTour = False
+        count = 0
+        
+        start_time = time.time()
+        bssf = self.defaultRandomTour()['soln']#i would use greedy, but, it doesn't always produce
+        starting_solution = bssf
+        ####################################
+        # The amount of tries it does to get a best solution
+        # this could be removed
+        print(len(bssf.route))
+        attempts = 20
+        while attempts != 0 and time.time()-start_time < time_allowance:
+            attempts -= 1
+            keep_looping = True
+            can_announce_better = True
+            while keep_looping and time.time()-start_time < time_allowance:
+                keep_looping = False
+                temp_solution = koptLoop(starting_solution,ncities)
+                
+                if(temp_solution.cost < bssf.cost):
+                    if(can_announce_better):
+                        can_announce_better = False
+                        print("better found", bssf.cost, temp_solution.cost)
+                    bssf = temp_solution
+                    starting_solution = temp_solution
+                    keep_looping = True
+                elif(temp_solution.cost < starting_solution.cost):
+                    keep_looping = True
+                    starting_solution = temp_solution
+            print(attempts)
+            starting_solution = self.defaultRandomTour(time.time() - start_time)['soln']
+        end_time = time.time()
+        results['cost'] = bssf.cost
+        results['time'] = end_time - start_time
+        results['count'] = count
+        results['soln'] = bssf
+        results['max'] = None
+        results['total'] = None
+        results['pruned'] = None
+        return results
+        
     ''' <summary>
 		This is the entry point for the default solver
 		which just finds a valid random tour.  Note this could be used to find your
@@ -268,17 +334,6 @@ class TSPSolver:
         results['pruned'] = numPruned
         return results
 
-    ''' <summary>
-		This is the entry point for the algorithm you'll write for your group project.
-		</summary>
-		<returns>results dictionary for GUI that contains three ints: cost of best solution,
-		time spent to find best solution, total number of solutions found during search, the
-		best solution found.  You may use the other three field however you like.
-		algorithm</returns>
-	'''
-
-    def fancy(self, time_allowance=60.0):
-        pass
 
     def createOriginalCostMatrix(self, cities):
         ncities = len(cities)
