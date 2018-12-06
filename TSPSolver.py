@@ -16,12 +16,114 @@ import heapq
 import itertools
 
 
+def optSwap(route, i, k):
+    '''
+    Reverses the subsection from index i to k
+    '''
+    return route[:i] + list(reversed(route[i:k])) + route[k:]
+
+
+def koptLoop(bssf, ncities):
+    '''
+    This is loop iterates through each of the possible
+    swaps, calls the swap function then check if the new
+    solution is better.
+    '''
+    for i in range(ncities-1):
+        for k in range(i, ncities):
+            new_solution = TSPSolution(optSwap(bssf.route, i, k))
+            if(new_solution.cost < bssf.cost):
+                return new_solution
+    return bssf
+
+
 class TSPSolver:
     def __init__(self, gui_view):
         self._scenario = None
 
     def setupWithScenario(self, scenario):
         self._scenario = scenario
+
+    def fancy(self, time_allowance=60.0):
+        ''' 
+        2-opt algorithm
+
+        A variation of the k-opt algorithm where k=2. The k-opt algorithm
+        is a type of local search algorithm. Essentially the algorithm
+        is this:
+        1) Start with a solution
+        2) Look for every possible combination of swap reversals between 
+        "k" edges
+        3) If the swap produces a better solution then update the bssf
+
+        Pitfall:
+        Since this is a variation of a local search algorithm it does not
+        guarantee the optimal solution but it does guarantee that it will
+        finish quickly. The reason this algorithm cannot guarantee the 
+        optimal solution is because the searching is done locally and therefore
+        the solution found is the 'local optimum' solution. While it may find
+        improvements, it may also find the 'local optimum' which may not 
+        always be the 'overall optimum'.
+
+        Counter-acting the Pitfall:
+        The above pitfall can be couteracted by introducing the methodology of
+        'restarts'. Since the algorithm can only guarantee a 'local optimum' it may
+        not find the 'overall maximum' with only one try. By running the algorithm
+        many times, with different starting solutions, the probability of finding
+        the 'overall optimum' increases drastically.
+	    '''
+
+        results = {}
+        cities = self._scenario.getCities()
+        ncities = len(cities)
+        count = 0
+
+        start_time = time.time()
+
+        # TODO Change to greedy algorithm
+        bssf = self.defaultRandomTour()['soln']
+        starting_solution = bssf
+
+        # print(len(bssf.route))
+        # The amount of attempts  to get a best solution
+        attempts = 20
+        while attempts != 0 and time.time()-start_time < time_allowance:
+            attempts -= 1
+            keep_looping = True
+            can_announce_better = True
+            while keep_looping and time.time()-start_time < time_allowance:
+                keep_looping = False
+                temp_solution = koptLoop(starting_solution, ncities)
+
+                if(temp_solution.cost < bssf.cost):
+                    # Reset the "better flag"
+                    if(can_announce_better):
+                        can_announce_better = False
+                        #print("better found", bssf.cost, temp_solution.cost)
+
+                    bssf = temp_solution
+                    starting_solution = temp_solution
+                    keep_looping = True
+
+                elif(temp_solution.cost < starting_solution.cost):
+                    keep_looping = True
+                    starting_solution = temp_solution
+            # print(attempts)
+
+            # Reset the starting solution for the next round of swapping
+            # TODO Change to greedy algorithm
+            starting_solution = self.defaultRandomTour(
+                time.time() - start_time)['soln']
+
+        end_time = time.time()
+        results['cost'] = bssf.cost
+        results['time'] = end_time - start_time
+        results['count'] = count
+        results['soln'] = bssf
+        results['max'] = None
+        results['total'] = None
+        results['pruned'] = None
+        return results
 
     ''' <summary>
 		This is the entry point for the default solver
@@ -76,7 +178,7 @@ class TSPSolver:
 		algorithm</returns>
 	'''
 
-    def greedy( self,time_allowance=60.0):
+    def greedy(self, time_allowance=60.0):
         if (len(self._scenario.getCities()) == 0):
             return self.invalidResult()
         results = {}
@@ -98,7 +200,7 @@ class TSPSolver:
                 #if all cities have been tried as start city
                 if (startCity + 1 >= len(allCities)):
                     break
-                #increment startCity and reset tour info
+                # increment startCity and reset tour info
                 startCity = startCity + 1
                 route = []
                 currentCity = startCity
@@ -126,7 +228,7 @@ class TSPSolver:
                 if bssf.cost < math.inf:
                     foundTour = True
                 else:
-                    #doesn't count as a solution if cost is infinite. Try a new start city.
+                    # doesn't count as a solution if cost is infinite. Try a new start city.
                     tryNewStartCity = True
         end_time = time.time()
         results['cost'] = bssf.cost if foundTour else math.inf
@@ -161,7 +263,7 @@ class TSPSolver:
 
     def invalidResult(self):
         results = {}
-        results['cost'] =  math.inf
+        results['cost'] = math.inf
         results['time'] = math.inf
         results['count'] = 0
         results['soln'] = None
@@ -292,18 +394,6 @@ class TSPSolver:
         results['total'] = totalStates
         results['pruned'] = numPruned
         return results
-
-    ''' <summary>
-		This is the entry point for the algorithm you'll write for your group project.
-		</summary>
-		<returns>results dictionary for GUI that contains three ints: cost of best solution,
-		time spent to find best solution, total number of solutions found during search, the
-		best solution found.  You may use the other three field however you like.
-		algorithm</returns>
-	'''
-
-    def fancy(self, time_allowance=60.0):
-        pass
 
     def createOriginalCostMatrix(self, cities):
         ncities = len(cities)
