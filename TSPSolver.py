@@ -43,16 +43,6 @@ def koptRealLoop(bssf, route,ncities, i, k):
             return new_solution
     return bssf
 
-def koptLoop(bssf, ncities):
-    
-    for i in range(ncities-1):
-        for k in range(i, ncities):
-            new_solution = TSPSolution(optSwap(bssf.route, i, k))
-            if(new_solution.cost < bssf.cost):
-                return new_solution
-    return bssf
-
-
 class TSPSolver:
     def __init__(self, gui_view):
         self._scenario = None
@@ -88,7 +78,8 @@ class TSPSolver:
         many times, with different starting solutions, the probability of finding
         the 'overall optimum' increases drastically.
 	    '''
-        k = 3
+        k = 2#here is where we can change the k we are using, this should be set from the gui
+        
         results = {}
         cities = self._scenario.getCities()
         ncities = len(cities)
