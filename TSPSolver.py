@@ -18,14 +18,21 @@ import itertools
 def optSwap(route, i , k):
     return route[:i] + list(reversed(route[i:k])) + route[k:]
 
-def koptLoop(bssf, ncities):
-    for i in range(ncities-1):
-        for k in range(i, ncities):
-            new_solution = TSPSolution(optSwap(bssf.route, i, k) )
-            if(new_solution.cost < bssf.cost):
-                return new_solution
+def koptLoop(bssf, ncities, k):
+    for i in range(ncities-(k-1)):
+        new_solution = koptRealLoop(bssf, bssf.route, ncities, i, k-2)
+        if(new_solution.cost < bssf.cost):
+            return new_solution
     return bssf
-
+def koptRealLoop(bssf, route,ncities, i, k):
+    if( k < 0):
+        return TSPSolution(route)
+    for j in range(i, (ncities - k) ):
+        new_route = optSwap(route, i, j)
+        new_solution = koptRealLoop(bssf, new_route, ncities,j, k-1)
+        if(new_solution.cost < bssf.cost):
+            return new_solution
+    return bssf
 class TSPSolver:
     def __init__(self, gui_view):
         self._scenario = None
@@ -45,6 +52,7 @@ class TSPSolver:
 	'''
 
     def fancy(self, time_allowance=60.0):
+        k = 3
         results = {}
         cities = self._scenario.getCities()
         ncities = len(cities)
@@ -65,7 +73,7 @@ class TSPSolver:
             can_announce_better = True
             while keep_looping and time.time()-start_time < time_allowance:
                 keep_looping = False
-                temp_solution = koptLoop(starting_solution,ncities)
+                temp_solution = koptLoop(starting_solution,ncities, k)
                 
                 if(temp_solution.cost < bssf.cost):
                     if(can_announce_better):

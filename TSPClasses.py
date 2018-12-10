@@ -206,10 +206,10 @@ class SearchState:
     def __init__(self, parentCostMatrix, exitCity = None, enterCity = None, parentRoute = list(), parentBound = 0):
         # Give the state an id so it can be found in the heap
         self._id = uuid.uuid4().hex
-        self.route = parentRoute
+        self.route = parentRoute.copy()
         self.visitedCities = set()
         self._initializeVisitedCities()
-        self.costMatrix = parentCostMatrix
+        self.costMatrix = parentCostMatrix.copy()
         self.matrixLen = len(self.costMatrix[0])
         # Initialize the bound based on the previous matrix's bound
         if (enterCity is None):
@@ -225,7 +225,7 @@ class SearchState:
         Space: O(n) - creates a set that is at most size "n"
 
         Initializes the set with all the city names that have
-        been visited
+        been visited assuming set is a hash set.
         '''
         for i in range(len(self.route)):
             self.visitedCities.add(self.route[i]._name)
