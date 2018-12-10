@@ -15,10 +15,19 @@ from TSPClasses import *
 import heapq
 import itertools
 
-def optSwap(route, i , k):
+
+def optSwap(route, i, k):
+    '''
+    Reverses the subsection from index i to k
+    '''
     return route[:i] + list(reversed(route[i:k])) + route[k:]
 
 def koptLoop(bssf, ncities, k):
+    '''
+    This is loop iterates through each of the possible
+    swaps, calls the swap function then check if the new
+    solution is better.
+    '''
     for i in range(ncities-(k-1)):
         new_solution = koptRealLoop(bssf, bssf.route, ncities, i, k-2)
         if(new_solution.cost < bssf.cost):
@@ -33,6 +42,17 @@ def koptRealLoop(bssf, route,ncities, i, k):
         if(new_solution.cost < bssf.cost):
             return new_solution
     return bssf
+
+def koptLoop(bssf, ncities):
+    
+    for i in range(ncities-1):
+        for k in range(i, ncities):
+            new_solution = TSPSolution(optSwap(bssf.route, i, k))
+            if(new_solution.cost < bssf.cost):
+                return new_solution
+    return bssf
+
+
 class TSPSolver:
     def __init__(self, gui_view):
         self._scenario = None
@@ -40,32 +60,48 @@ class TSPSolver:
     def setupWithScenario(self, scenario):
         self._scenario = scenario
 
-
-
-    ''' <summary>
-		This is the entry point for the algorithm you'll write for your group project.
-		</summary>
-		<returns>results dictionary for GUI that contains three ints: cost of best solution,
-		time spent to find best solution, total number of solutions found during search, the
-		best solution found.  You may use the other three field however you like.
-		algorithm</returns>
-	'''
-
     def fancy(self, time_allowance=60.0):
+        ''' 
+        2-opt algorithm
+
+        A variation of the k-opt algorithm where k=2. The k-opt algorithm
+        is a type of local search algorithm. Essentially the algorithm
+        is this:
+        1) Start with a solution
+        2) Look for every possible combination of swap reversals between 
+        "k" edges
+        3) If the swap produces a better solution then update the bssf
+
+        Pitfall:
+        Since this is a variation of a local search algorithm it does not
+        guarantee the optimal solution but it does guarantee that it will
+        finish quickly. The reason this algorithm cannot guarantee the 
+        optimal solution is because the searching is done locally and therefore
+        the solution found is the 'local optimum' solution. While it may find
+        improvements, it may also find the 'local optimum' which may not 
+        always be the 'overall optimum'.
+
+        Counter-acting the Pitfall:
+        The above pitfall can be couteracted by introducing the methodology of
+        'restarts'. Since the algorithm can only guarantee a 'local optimum' it may
+        not find the 'overall maximum' with only one try. By running the algorithm
+        many times, with different starting solutions, the probability of finding
+        the 'overall optimum' increases drastically.
+	    '''
         k = 3
         results = {}
         cities = self._scenario.getCities()
         ncities = len(cities)
-        foundTour = False
         count = 0
-        
+
         start_time = time.time()
-        bssf = self.defaultRandomTour()['soln']#i would use greedy, but, it doesn't always produce
+
+        # TODO Change to greedy algorithm
+        bssf = self.defaultRandomTour()['soln']
         starting_solution = bssf
-        ####################################
-        # The amount of tries it does to get a best solution
-        # this could be removed
-        print(len(bssf.route))
+
+        # print(len(bssf.route))
+        # The amount of attempts  to get a best solution
         attempts = 20
         while attempts != 0 and time.time()-start_time < time_allowance:
             attempts -= 1
@@ -73,20 +109,30 @@ class TSPSolver:
             can_announce_better = True
             while keep_looping and time.time()-start_time < time_allowance:
                 keep_looping = False
+
                 temp_solution = koptLoop(starting_solution,ncities, k)
                 
+
                 if(temp_solution.cost < bssf.cost):
+                    # Reset the "better flag"
                     if(can_announce_better):
                         can_announce_better = False
-                        print("better found", bssf.cost, temp_solution.cost)
+                        #print("better found", bssf.cost, temp_solution.cost)
+
                     bssf = temp_solution
                     starting_solution = temp_solution
                     keep_looping = True
+
                 elif(temp_solution.cost < starting_solution.cost):
                     keep_looping = True
                     starting_solution = temp_solution
-            print(attempts)
-            starting_solution = self.defaultRandomTour(time.time() - start_time)['soln']
+            # print(attempts)
+
+            # Reset the starting solution for the next round of swapping
+            # TODO Change to greedy algorithm
+            starting_solution = self.defaultRandomTour(
+                time.time() - start_time)['soln']
+
         end_time = time.time()
         results['cost'] = bssf.cost
         results['time'] = end_time - start_time
@@ -96,7 +142,7 @@ class TSPSolver:
         results['total'] = None
         results['pruned'] = None
         return results
-        
+
     ''' <summary>
 		This is the entry point for the default solver
 		which just finds a valid random tour.  Note this could be used to find your
@@ -150,7 +196,7 @@ class TSPSolver:
 		algorithm</returns>
 	'''
 
-    def greedy( self,time_allowance=60.0):
+    def greedy(self, time_allowance=60.0):
         if (len(self._scenario.getCities()) == 0):
             return self.invalidResult()
         results = {}
@@ -158,59 +204,84 @@ class TSPSolver:
         startCity = 0
         currentCity = startCity
         allCities = copy.deepcopy(self._scenario.getCities())
-        citiesLeft = allCities
+        citiesLeft = copy.copy(allCities)
         bssf = TSPSolution([allCities[startCity]])
         tryNewStartCity = False
         route = []
+        count = 1
         start_time = time.time()
-
-        while not foundTour and time.time() - start_time < time_allowance:
+        while not foundTour and ((time.time() - start_time) < time_allowance):
             #for case of previous start city not finding a tour
             if(tryNewStartCity == True):
+                tryNewStartCity = False
+                count = count + 1
                 #if all cities have been tried as start city
                 if (startCity + 1 >= len(allCities)):
                     break
-                #increment startCity and reset tour info
+                # increment startCity and reset tour info
                 startCity = startCity + 1
                 route = []
                 currentCity = startCity
-                citiesLeft = self._scenario.getCities()
+                citiesLeft = copy.copy(allCities)
             #add current city to route and remove from list of possible cities to go to
             route.append(allCities[currentCity])
-            citiesLeft.remove(allCities[currentCity])
+            citiesLeft = self.removeCityFromList(citiesLeft, allCities[currentCity])
             #find closest/lowest cost city to travel to next
             if (len(citiesLeft) > 0):
-                closestNeighbor = 0
+                closestNeighbor = None
                 closestCost = math.inf
-                for i in range(len(citiesLeft)-1):
+                for i in range(len(citiesLeft)):
                     cost = allCities[currentCity].costTo(citiesLeft[i])
                     if (cost < closestCost):
                         closestCost = cost
-                        closestNeighbor = i
+                        closestNeighbor = citiesLeft[i]
+                if (closestNeighbor is None):
+                    tryNewStartCity = True      # hit a dead end
+                    continue
                 #switch currentCity to the closest city found
-                currentCity = closestNeighbor
+                currentCity = self.findCityIndexInList(allCities, closestNeighbor)
             else:
-                # route.append(startCity) #don't need this because TSPSolution does it in cost function
                 #create a solution because we visited all cities (greedy = stop on first valid solution)
                 bssf = TSPSolution(route)
                 if bssf.cost < math.inf:
                     foundTour = True
                 else:
-                    #doesn't count as a solution if cost is infinite. Try a new start city.
+                    # doesn't count as a solution if cost is infinite. Try a new start city.
                     tryNewStartCity = True
         end_time = time.time()
         results['cost'] = bssf.cost if foundTour else math.inf
         results['time'] = end_time - start_time
-        results['count'] = len(route)
+        results['count'] = count
         results['soln'] = bssf
         results['max'] = None
         results['total'] = None
         results['pruned'] = None
         return results
 
+    def findCityIndexInList(self, cityList, city):
+        try:
+            i = cityList.index(city)
+            return i
+        except Exception:
+            for i in range(len(cityList)):
+                c = cityList[i]
+                if c._index == city._index:
+                    return i
+            raise Exception("city not found in list")
+
+    def removeCityFromList(self, cityList, city):
+        for c in cityList:
+            if c == city:
+                cityList.remove(c)
+                return cityList
+            if c._index == city._index:
+                cityList.remove(c)
+                return cityList
+        raise Exception("city not found in list")
+
     def invalidResult(self):
         results = {}
-        results['cost'] =  math.inf
+        results['cost'] = math.inf
         results['time'] = math.inf
         results['count'] = 0
         results['soln'] = None
@@ -341,7 +412,6 @@ class TSPSolver:
         results['total'] = totalStates
         results['pruned'] = numPruned
         return results
-
 
     def createOriginalCostMatrix(self, cities):
         ncities = len(cities)
