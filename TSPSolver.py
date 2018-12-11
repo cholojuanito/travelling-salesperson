@@ -78,7 +78,8 @@ class TSPSolver:
         many times, with different starting solutions, the probability of finding
         the 'overall optimum' increases drastically.
 	    '''
-        k = 2#here is where we can change the k we are using, this should be set from the gui
+        #here is where we can change the k we are using, this should be set from the gui
+        k = 2
         
         results = {}
         cities = self._scenario.getCities()
@@ -112,6 +113,7 @@ class TSPSolver:
 
                     bssf = temp_solution
                     starting_solution = temp_solution
+                    count+= 1
                     keep_looping = True
 
                 elif(temp_solution.cost < starting_solution.cost):
