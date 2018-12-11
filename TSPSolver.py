@@ -22,20 +22,26 @@ def optSwap(route, i, k):
     '''
     return route[:i] + list(reversed(route[i:k])) + route[k:]
 
-
-def koptLoop(bssf, ncities):
+def koptLoop(bssf, ncities, k):
     '''
     This is loop iterates through each of the possible
     swaps, calls the swap function then check if the new
     solution is better.
     '''
-    for i in range(ncities-1):
-        for k in range(i, ncities):
-            new_solution = TSPSolution(optSwap(bssf.route, i, k))
-            if(new_solution.cost < bssf.cost):
-                return new_solution
+    for i in range(ncities-(k-1)):
+        new_solution = koptRealLoop(bssf, bssf.route, ncities, i, k-2)
+        if(new_solution.cost < bssf.cost):
+            return new_solution
     return bssf
-
+def koptRealLoop(bssf, route,ncities, i, k):
+    if( k < 0):
+        return TSPSolution(route)
+    for j in range(i, (ncities - k) ):
+        new_route = optSwap(route, i, j)
+        new_solution = koptRealLoop(bssf, new_route, ncities,j, k-1)
+        if(new_solution.cost < bssf.cost):
+            return new_solution
+    return bssf
 
 class TSPSolver:
     def __init__(self, gui_view):
@@ -72,7 +78,9 @@ class TSPSolver:
         many times, with different starting solutions, the probability of finding
         the 'overall optimum' increases drastically.
 	    '''
-
+        #here is where we can change the k we are using, this should be set from the gui
+        k = 5
+        
         results = {}
         cities = self._scenario.getCities()
         ncities = len(cities)
@@ -80,8 +88,7 @@ class TSPSolver:
 
         start_time = time.time()
 
-        # TODO Change to greedy algorithm
-        bssf = self.defaultRandomTour()['soln']
+        bssf = self.greedy()['soln']
         starting_solution = bssf
 
         # print(len(bssf.route))
@@ -93,7 +100,9 @@ class TSPSolver:
             can_announce_better = True
             while keep_looping and time.time()-start_time < time_allowance:
                 keep_looping = False
-                temp_solution = koptLoop(starting_solution, ncities)
+
+                temp_solution = koptLoop(starting_solution,ncities, k)
+                
 
                 if(temp_solution.cost < bssf.cost):
                     # Reset the "better flag"
@@ -103,6 +112,7 @@ class TSPSolver:
 
                     bssf = temp_solution
                     starting_solution = temp_solution
+                    count+= 1
                     keep_looping = True
 
                 elif(temp_solution.cost < starting_solution.cost):
