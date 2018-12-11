@@ -79,7 +79,7 @@ class TSPSolver:
         the 'overall optimum' increases drastically.
 	    '''
         #here is where we can change the k we are using, this should be set from the gui
-        k = 2
+        k = 5
         
         results = {}
         cities = self._scenario.getCities()
@@ -88,8 +88,7 @@ class TSPSolver:
 
         start_time = time.time()
 
-        # TODO Change to greedy algorithm
-        bssf = self.defaultRandomTour()['soln']
+        bssf = self.greedy()['soln']
         starting_solution = bssf
 
         # print(len(bssf.route))
